@@ -1,0 +1,8 @@
+aiogram==3.21.0
+loguru==0.7.3
+pydantic==2.11.7
+pydantic_settings==2.10.1
+pytest==8.4.1
+python-dotenv==1.1.1
+SQLAlchemy==2.0.41
+alembic==1.16.2

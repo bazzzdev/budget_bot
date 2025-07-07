@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# PyCharm
+.idea/
+
+# dotenv
+.env
+
+# Alembic
+alembic/versions/*.pyc
+
+# Test cache
+.pytest_cache/
+
+# SQLite database files
+*.sqlite3
+*.db
+
+# Logs
+*.log
+
+# Misc
+.DS_Store
+Thumbs.db

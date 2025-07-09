@@ -39,7 +39,7 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "."
-        target: "~/app"
+        target: "~/budget_bot"
 
     - name: Restart docker on server
       uses: appleboy/ssh-action@v1.0.0
@@ -48,6 +48,6 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          cd ~/app
+          cd ~/budget_bot
           docker compose down
           docker compose up -d --build

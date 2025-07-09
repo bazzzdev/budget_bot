@@ -5,7 +5,7 @@ from aiogram.types import Message
 from bot.handlers.categories import get_context
 from bot.keyboards.menu import menu_inline_keyboard
 from bot.services.db import AsyncSessionLocal
-from bot.services.utils import get_or_create_user
+from bot.services.utils import get_or_create_user, get_user_display
 from bot.utils.logger import logger
 
 router = Router()
@@ -21,12 +21,20 @@ async def start_handler(message: Message):
         await get_or_create_user(session, message.from_user)
         await get_context(session, message.chat)
 
-    await message.answer(
-        f"Привет, <b>{message.from_user.first_name}</b>!\n"
-        f"Вы начали работу с ботом в чате <code>{message.chat.id}</code>\n"
-        f"Язык: Русский (по умолчанию)",
-        reply_markup=menu_inline_keyboard()
+    user_display = get_user_display(message.from_user)
+
+    text = (
+        f"Привет, {user_display}\n"
+        f"Вы начали работу с ботом в данном чате!\n\n"
+        f"<b>Основные команды:</b>\n"
+        f"<code>+сумма категория</code> — добавить доход, например: +5000 зарплата\n"
+        f"<code>сумма категория</code> — добавить расход, например: 1000 кафе\n\n"
+        f"<b>Дополнительные команды:</b>\n"
+        f"/commands — список всех доступных команд\n"
+        f"/help — помощь"
     )
+
+    await message.answer(text, parse_mode="HTML", reply_markup=menu_inline_keyboard())
 
 @router.message(Command("commands"))
 async def commands_handler(message: Message):

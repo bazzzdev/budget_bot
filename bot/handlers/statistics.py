@@ -9,7 +9,7 @@ from sqlalchemy.future import select
 from bot.keyboards.menu import menu_inline_keyboard
 from bot.models.models import Income, Expense, Category
 from bot.services.db import get_async_session
-from bot.services.utils import parse_date_arg, get_or_create_context, get_user
+from bot.services.utils import parse_date_arg, get_or_create_context, get_user, get_user_display
 
 router = Router()
 
@@ -56,9 +56,9 @@ async def stat_handler(callback: CallbackQuery, period):
                 Expense.created_at < date_to
             )
         )).scalar() or 0
-
+    user_display = get_user_display(callback.from_user)
     text = (
-        f"Статистика {period_text}:\n"
+        f"Статистика {period_text} для {user_display}\n"
         f"🟢 Доход: <b>{income_sum}</b>\n"
         f"🔴 Расход: <b>{expense_sum}</b>"
     )
@@ -119,15 +119,32 @@ async def statcat_handler(callback: CallbackQuery, period):
             .order_by(func.sum(Expense.amount).desc())
         )).all()
 
-    text = f"Статистика по категориям {period_text}:\n\n"
-    text += ("🟢 Доход:\n" + "- - - - - - - - - -\n" +
-             ("\n".join([f"{int(amount)} {title}" for title, amount in income_rows]) or "нет"))
-    text += "\n- - - - - - - - - -\n"
-    text += ("\n🔴 Расход:\n" + "- - - - - - - - - -\n" +
-             ("\n".join([f"{int(amount)} {title}" for title, amount in expense_rows]) or "нет"))
-    text += "\n- - - - - - - - - -\n"
+    # Имя пользователя
+    username = callback.from_user.username
+    user_display = f"@{username}" if username else (callback.from_user.full_name or "Аноним")
 
-    # Отправляем статистику по категориям
+    # Суммы
+    total_income = sum(amount for _, amount in income_rows) if income_rows else 0
+    total_expense = sum(amount for _, amount in expense_rows) if expense_rows else 0
+
+    # Формируем текст
+    text = f"Статистика для {user_display} по категориям {period_text}\n\n"
+
+    text += "🟢 Доход:\n- - - - - - - - - -\n"
+    if income_rows:
+        text += "\n".join([f"{int(amount)} {title}" for title, amount in income_rows])
+    else:
+        text += "нет"
+    text += f"\n- - - - - - - - - -\nИтого: {int(total_income)}\n"
+
+    text += "\n🔴 Расход:\n- - - - - - - - - -\n"
+    if expense_rows:
+        text += "\n".join([f"{int(amount)} {title}" for title, amount in expense_rows])
+    else:
+        text += "нет"
+    text += f"\n- - - - - - - - - -\nИтого: {int(total_expense)}"
+
+    # Отправляем статистику
     await callback.message.answer(text, reply_markup=menu_inline_keyboard())
 
 @router.message(Command("statdetail"))
@@ -190,7 +207,9 @@ async def statdetail_handler(callback: CallbackQuery, period):
     expense_text = fmt_rows(expense_rows)
     expense_total = sum(int(amount) for _, amount, _ in expense_rows)
 
-    text = f"Детальная статистика за {now.strftime('%d.%m.%Y')}\n\n"
+    user_display = get_user_display(callback.from_user)
+
+    text = f"Детальная статистика за {now.strftime('%d.%m.%Y')} для {user_display}\n\n"
     text += "🟢 Доход\n"
     text += "- - - - - - - - - -\n"
     text += income_text or "нет"

@@ -140,3 +140,7 @@ async def get_category(session: AsyncSession, title: str, context: Context) -> C
         .where(Category.is_deleted == False)
     )
     return result.scalars().first()
+
+def get_user_display(user_obj):
+    username = user_obj.username
+    return f"@{username}" if username else (user_obj.full_name or "Аноним")

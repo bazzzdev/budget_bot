@@ -1,30 +1,11 @@
-version: '3.9'
+FROM python:3.12-slim
 
-services:
-  bot:
-    build: .
-    container_name: telegram_bot
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - db
-    command: >
-      sh -c "alembic upgrade head &&
-             python main.py"
+RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 
-  db:
-    image: postgres:16
-    container_name: postgres_db
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+WORKDIR /app
 
-volumes:
-  postgres_data:
+COPY . .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD alembic upgrade head && python main.py

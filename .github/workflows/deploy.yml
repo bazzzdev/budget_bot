@@ -21,9 +21,13 @@ jobs:
       run: |
         pip install -r requirements.txt
 
-    - name: Run tests
+    - name: Set environment variables for tests
       run: |
-        pytest
+        echo "BOT_TOKEN=fake_test_token" >> $GITHUB_ENV
+        echo "DATABASE_URL=sqlite+aiosqlite:///:memory:" >> $GITHUB_ENV
+
+    - name: Run tests
+      run: pytest
 
     - name: Upload code to server
       uses: appleboy/scp-action@v0.1.7

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     database_url: str
     lang: str = "ru"
 
-    model_config = ConfigDict(env_file=".env")
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
+

@@ -2,7 +2,7 @@ import re
 from datetime import datetime, UTC
 from decimal import Decimal, InvalidOperation
 
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from sqlalchemy.future import select
 
@@ -12,23 +12,23 @@ from bot.services.utils import get_or_create_user, get_or_create_context, get_ca
 
 router = Router()
 
-
-@router.message()
+@router.message(F.text)
 async def handle_expense_income(message: types.Message):
     """
     Обрабатывает сообщения с расходами и доходами.
     Формат: `1000 категория` (расход) или `+5000 категория` (доход).
     """
+    text = message.text.strip()
+
+    if text.startswith("/"):
+        # Игнорируем команды
+        return
+
+    # Проверяем формат сообщения: сумма категория или +сумма категория
+    if not re.match(r"^\+?\d+([.,]\d+)?\s+\S+", text):
+        return  # Не обрабатываем неподходящие сообщения
+
     async with get_async_session() as session:
-        if message.text.startswith("/"):
-            # Игнорируем команды
-            return
-
-        # Проверяем формат сообщения: сумма категория или +сумма категория
-        if not re.match(r"^\+?\d+([.,]\d+)?\s+\S+", message.text.strip()):
-            return  # Не обрабатываем неподходящие сообщения
-
-        text = message.text.strip()
         user_tg = message.from_user
         chat = message.chat
 

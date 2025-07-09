@@ -32,3 +32,6 @@ alembic/versions/*.pyc
 # Misc
 .DS_Store
 Thumbs.db
+
+# PostgreSQL
+postgres_data/

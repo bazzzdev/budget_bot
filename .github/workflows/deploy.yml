@@ -21,6 +21,9 @@ jobs:
       run: |
         pip install -r requirements.txt
 
+    - name: Install aiosqlite for tests
+      run: pip install aiosqlite
+
     - name: Set environment variables for tests
       run: |
         echo "BOT_TOKEN=fake_test_token" >> $GITHUB_ENV

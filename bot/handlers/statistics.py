@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
 from aiogram import Router
-from aiogram.filters import Command
-from aiogram.types import CallbackQuery
+from aiogram.filters import Command, CommandObject
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy import func
 from sqlalchemy.future import select
 
@@ -20,27 +20,40 @@ router = Router()
 
 
 @router.message(Command("statcat"))
-async def statcat_handler(callback: CallbackQuery, period):
+async def statcat_command(message: Message, command: CommandObject):
+    """Обработчик прямой команды /statcat"""
+    period = command.args if command.args else ""
+    await statcat_handler(message, period)
+
+
+async def statcat_handler(message_or_callback, period):
     """
-    Обрабатывает команду /statcat и возвращает статистику по категориям за выбранный период.
+    Обрабатывает статистику по категориям за выбранный период.
     Показывает суммы доходов и расходов по каждой категории.
     """
+    is_callback = isinstance(message_or_callback, CallbackQuery)
+    message = message_or_callback.message if is_callback else message_or_callback
+    user = message_or_callback.from_user
+
     parsed = parse_date_arg(period or "")
     if not parsed:
-        await callback.message.reply(
-            "Используйте: /statcat day, /statcat week, /statcat month, /statcat dd.mm.yyyy или /statcat dd.mm.yyyy - dd.mm.yyyy"
-        )
+        text = ("Для просмотра статистики используйте следующие форматы:\n\n"
+                "• /statcat day - за сегодня\n"
+                "• /statcat week - за текущую неделю\n"
+                "• /statcat month - за текущий месяц\n"
+                "• /statcat dd.mm.yyyy - за конкретную дату\n"
+                "• /statcat dd.mm.yyyy - dd.mm.yyyy - за период")
+        await message.answer(text)
         return
 
     date_from, date_to, period_text = parsed
 
     async with get_async_session() as session:
-        # Получаем контекст чата и пользователя
-        context = await get_or_create_context(session, callback.message.chat)
-        user = await get_user(session, callback.from_user.id)
+        context = await get_or_create_context(session, message.chat)
+        db_user = await get_user(session, user.id)
 
-        if not user:
-            await callback.message.reply("Пользователь не найден.")
+        if not db_user:
+            await message.answer("Пользователь не найден.")
             return
 
         # Доходы по категориям
@@ -50,7 +63,7 @@ async def statcat_handler(callback: CallbackQuery, period):
                 .join(Income, Income.category_id == Category.id)
                 .where(
                     Income.context_id == context.id,
-                    Income.user_id == user.id,
+                    Income.user_id == db_user.id,
                     Income.created_at >= date_from,
                     Income.created_at < date_to,
                     Category.is_deleted == False,
@@ -67,7 +80,7 @@ async def statcat_handler(callback: CallbackQuery, period):
                 .join(Expense, Expense.category_id == Category.id)
                 .where(
                     Expense.context_id == context.id,
-                    Expense.user_id == user.id,
+                    Expense.user_id == db_user.id,
                     Expense.created_at >= date_from,
                     Expense.created_at < date_to,
                     Category.is_deleted == False,
@@ -77,19 +90,11 @@ async def statcat_handler(callback: CallbackQuery, period):
             )
         ).all()
 
-    # Имя пользователя
-    username = callback.from_user.username
-    user_display = (
-        f"@{username}" if username else (callback.from_user.full_name or "Аноним")
-    )
-
-    # Суммы
     total_income = sum(amount for _, amount in income_rows) if income_rows else 0
     total_expense = sum(amount for _, amount in expense_rows) if expense_rows else 0
+    user_display = get_user_display(user)
 
-    # Формируем текст
     text = f"Статистика для {user_display} по категориям {period_text}\n\n"
-
     text += "🟢 Доход:\n- - - - - - - - - -\n"
     if income_rows:
         text += "\n".join([f"{int(amount)} {title}" for title, amount in income_rows])
@@ -104,8 +109,7 @@ async def statcat_handler(callback: CallbackQuery, period):
         text += "нет"
     text += f"\n- - - - - - - - - -\nИтого: {int(total_expense)}"
 
-    # Отправляем статистику
-    await callback.message.answer(text, reply_markup=menu_inline_keyboard())
+    await message.answer(text, reply_markup=menu_inline_keyboard())
 
 
 @router.message(Command("statdetail"))

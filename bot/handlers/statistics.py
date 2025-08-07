@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -7,63 +7,17 @@ from sqlalchemy import func
 from sqlalchemy.future import select
 
 from bot.keyboards.menu import menu_inline_keyboard
-from bot.models.models import Income, Expense, Category
+from bot.models.models import Category, Expense, Income
 from bot.services.db import get_async_session
-from bot.services.utils import parse_date_arg, get_or_create_context, get_user, get_user_display
+from bot.services.utils import (
+    get_or_create_context,
+    get_user,
+    get_user_display,
+    parse_date_arg,
+)
 
 router = Router()
 
-@router.message(Command("stat"))
-async def stat_handler(callback: CallbackQuery, period):
-    """
-    Обрабатывает команду /stat и возвращает сумму доходов и расходов пользователя за выбранный период.
-    Параметры периода: day, week, month, дата или диапазон дат.
-    """
-    parsed = parse_date_arg(period or "")
-    if not parsed:
-        await callback.message.reply(
-            "Используйте: /stat day, /stat week, /stat month, /stat dd.mm.yyyy или /stat dd.mm.yyyy - dd.mm.yyyy"
-        )
-        return
-
-    date_from, date_to, period_text = parsed
-
-    async with get_async_session() as session:
-        # Получаем контекст чата и пользователя
-        context = await get_or_create_context(session, callback.message.chat)
-        user = await get_user(session, callback.from_user.id)
-
-        if not user:
-            await callback.message.reply("Пользователь не найден.")
-            return
-
-        # Суммируем доходы за период
-        income_sum = (await session.execute(
-            select(func.sum(Income.amount)).where(
-                Income.context_id == context.id,
-                Income.user_id == user.id,
-                Income.created_at >= date_from,
-                Income.created_at < date_to
-            )
-        )).scalar() or 0
-
-        # Суммируем расходы за период
-        expense_sum = (await session.execute(
-            select(func.sum(Expense.amount)).where(
-                Expense.context_id == context.id,
-                Expense.user_id == user.id,
-                Expense.created_at >= date_from,
-                Expense.created_at < date_to
-            )
-        )).scalar() or 0
-    user_display = get_user_display(callback.from_user)
-    text = (
-        f"Статистика {period_text} для {user_display}\n"
-        f"🟢 Доход: <b>{income_sum}</b>\n"
-        f"🔴 Расход: <b>{expense_sum}</b>"
-    )
-    # Отправляем пользователю итоговую статистику
-    await callback.message.answer(text, parse_mode="HTML", reply_markup=menu_inline_keyboard())
 
 @router.message(Command("statcat"))
 async def statcat_handler(callback: CallbackQuery, period):
@@ -90,38 +44,44 @@ async def statcat_handler(callback: CallbackQuery, period):
             return
 
         # Доходы по категориям
-        income_rows = (await session.execute(
-            select(Category.title, func.sum(Income.amount))
-            .join(Income, Income.category_id == Category.id)
-            .where(
-                Income.context_id == context.id,
-                Income.user_id == user.id,
-                Income.created_at >= date_from,
-                Income.created_at < date_to,
-                Category.is_deleted == False
+        income_rows = (
+            await session.execute(
+                select(Category.title, func.sum(Income.amount))
+                .join(Income, Income.category_id == Category.id)
+                .where(
+                    Income.context_id == context.id,
+                    Income.user_id == user.id,
+                    Income.created_at >= date_from,
+                    Income.created_at < date_to,
+                    Category.is_deleted == False,
+                )
+                .group_by(Category.title)
+                .order_by(func.sum(Income.amount).desc())
             )
-            .group_by(Category.title)
-            .order_by(func.sum(Income.amount).desc())
-        )).all()
+        ).all()
 
         # Расходы по категориям
-        expense_rows = (await session.execute(
-            select(Category.title, func.sum(Expense.amount))
-            .join(Expense, Expense.category_id == Category.id)
-            .where(
-                Expense.context_id == context.id,
-                Expense.user_id == user.id,
-                Expense.created_at >= date_from,
-                Expense.created_at < date_to,
-                Category.is_deleted == False
+        expense_rows = (
+            await session.execute(
+                select(Category.title, func.sum(Expense.amount))
+                .join(Expense, Expense.category_id == Category.id)
+                .where(
+                    Expense.context_id == context.id,
+                    Expense.user_id == user.id,
+                    Expense.created_at >= date_from,
+                    Expense.created_at < date_to,
+                    Category.is_deleted == False,
+                )
+                .group_by(Category.title)
+                .order_by(func.sum(Expense.amount).desc())
             )
-            .group_by(Category.title)
-            .order_by(func.sum(Expense.amount).desc())
-        )).all()
+        ).all()
 
     # Имя пользователя
     username = callback.from_user.username
-    user_display = f"@{username}" if username else (callback.from_user.full_name or "Аноним")
+    user_display = (
+        f"@{username}" if username else (callback.from_user.full_name or "Аноним")
+    )
 
     # Суммы
     total_income = sum(amount for _, amount in income_rows) if income_rows else 0
@@ -147,6 +107,7 @@ async def statcat_handler(callback: CallbackQuery, period):
     # Отправляем статистику
     await callback.message.answer(text, reply_markup=menu_inline_keyboard())
 
+
 @router.message(Command("statdetail"))
 async def statdetail_handler(callback: CallbackQuery, period):
     """
@@ -154,7 +115,9 @@ async def statdetail_handler(callback: CallbackQuery, period):
     Показывает список всех доходов и расходов с датой, категорией и суммой.
     """
     now = datetime.now(UTC)
-    date_from = now.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+    date_from = now.replace(hour=0, minute=0, second=0, microsecond=0).replace(
+        tzinfo=None
+    )
     date_to = (date_from + timedelta(days=1)).replace(tzinfo=None)
 
     async with get_async_session() as session:
@@ -167,32 +130,36 @@ async def statdetail_handler(callback: CallbackQuery, period):
             return
 
         # Доходы за день
-        income_rows = (await session.execute(
-            select(Income.created_at, Income.amount, Category.title)
-            .join(Category, Income.category_id == Category.id)
-            .where(
-                Income.context_id == context.id,
-                Income.user_id == user.id,
-                Income.created_at >= date_from,
-                Income.created_at < date_to,
-                Category.is_deleted == False
+        income_rows = (
+            await session.execute(
+                select(Income.created_at, Income.amount, Category.title)
+                .join(Category, Income.category_id == Category.id)
+                .where(
+                    Income.context_id == context.id,
+                    Income.user_id == user.id,
+                    Income.created_at >= date_from,
+                    Income.created_at < date_to,
+                    Category.is_deleted == False,
+                )
+                .order_by(Income.created_at)
             )
-            .order_by(Income.created_at)
-        )).all()
+        ).all()
 
         # Расходы за день
-        expense_rows = (await session.execute(
-            select(Expense.created_at, Expense.amount, Category.title)
-            .join(Category, Expense.category_id == Category.id)
-            .where(
-                Expense.context_id == context.id,
-                Expense.user_id == user.id,
-                Expense.created_at >= date_from,
-                Expense.created_at < date_to,
-                Category.is_deleted == False
+        expense_rows = (
+            await session.execute(
+                select(Expense.created_at, Expense.amount, Category.title)
+                .join(Category, Expense.category_id == Category.id)
+                .where(
+                    Expense.context_id == context.id,
+                    Expense.user_id == user.id,
+                    Expense.created_at >= date_from,
+                    Expense.created_at < date_to,
+                    Category.is_deleted == False,
+                )
+                .order_by(Expense.created_at)
             )
-            .order_by(Expense.created_at)
-        )).all()
+        ).all()
 
     def fmt_rows(rows):
         """Форматирует строки для вывода операций."""

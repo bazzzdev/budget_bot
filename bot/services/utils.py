@@ -28,11 +28,11 @@ def parse_date_arg(arg: str) -> tuple[datetime, datetime, str] | None:
         elif arg == "week":
             # С начала текущей недели (понедельник) до текущего времени
             date_from = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-            return date_from, now, "за неделю"
+            return date_from, now, "с начала недели"
         elif arg == "month":
             # С первого числа текущего месяца до текущего времени
             date_from = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            return date_from, now, "за месяц"
+            return date_from, now, "c начала месяца"
         elif re.match(r"^\d{2}\.\d{2}\.\d{4}$", arg):
             # Конкретная дата в формате ДД.ММ.ГГГГ
             date_from = datetime.strptime(arg, "%d.%m.%Y")

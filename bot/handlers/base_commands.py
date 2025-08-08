@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from bot.handlers.categories import get_context
-from bot.keyboards.menu import menu_inline_keyboard
+from bot.keyboards.menu import menu_inline_keyboard, submenu_inline_keyboard
 from bot.services.db import AsyncSessionLocal
 from bot.services.utils import get_or_create_user, get_user_display
 from bot.utils.logger import logger
@@ -36,6 +36,15 @@ async def start_handler(message: Message):
 
     await message.answer(text, parse_mode="HTML", reply_markup=menu_inline_keyboard())
 
+@router.message(Command("menu"))
+async def menu_handler(message: Message):
+    """
+    Обрабатывает команду /menu.
+    Показывает интерактивное меню с основными функциями бота.
+    """
+    text = "⚙️ МЕНЮ ⚙️"
+    await message.answer(text, reply_markup=submenu_inline_keyboard())
+
 @router.message(Command("commands"))
 async def commands_handler(message: Message):
     """
@@ -48,6 +57,8 @@ async def commands_handler(message: Message):
         "<code>+сумма категория</code> — добавить доход, например: <b>+5000 зарплата</b>\n"
         "\n"
         "<code>сумма категория</code> — добавить расход, например: <b>1000 кафе</b>\n"
+        "\n"
+        "/menu — вызвать меню\n"
         "\n"
         "/statcat day | week | month | ДД.ММ.ГГГГ | ДД.ММ.ГГГГ - ДД.ММ.ГГГГ — показать статистику доходов/расходов по категориям за день, неделю, месяц, дату, период\n"
         "\n"

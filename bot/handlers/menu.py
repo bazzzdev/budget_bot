@@ -3,6 +3,7 @@ from aiogram.types import CallbackQuery
 
 from bot.handlers.categories import list_categories_handler
 from bot.handlers.statistics import statcat_handler, statdetail_handler
+from bot.handlers.base_commands import commands_handler, help_handler
 from bot.keyboards.menu import (
     menu_inline_keyboard,
     period_menu_keyboard,
@@ -66,3 +67,14 @@ async def handle_stat_by_category_period(callback: CallbackQuery):
     period = callback.data.split("_")[-1]
     await callback.answer()
     await statcat_handler(callback, period)
+
+
+@router.callback_query(lambda c: c.data == "show_commands")
+async def show_commands_callback(callback: types.CallbackQuery):
+    await commands_handler(callback.message)
+    await callback.answer()
+
+@router.callback_query(lambda c: c.data == "show_help")
+async def show_help_callback(callback: types.CallbackQuery):
+    await help_handler(callback.message)
+    await callback.answer()

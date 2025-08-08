@@ -12,6 +12,8 @@ def submenu_inline_keyboard():
         inline_keyboard=[
             [InlineKeyboardButton(text="Категории", callback_data="show_categories")],
             [InlineKeyboardButton(text="Статистика", callback_data="statistics_menu")],
+            [InlineKeyboardButton(text="Команды", callback_data="show_commands")],
+            [InlineKeyboardButton(text="Помощь", callback_data="show_help")],
             [InlineKeyboardButton(text="Назад", callback_data="back_to_menu")],
         ]
     )

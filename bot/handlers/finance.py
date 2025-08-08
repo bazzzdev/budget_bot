@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, UTC
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 
 from aiogram import Router, types, F
@@ -74,7 +74,8 @@ async def handle_expense_income(message: types.Message):
             )
             return
 
-        now = datetime.now(UTC).replace(tzinfo=None)
+        moscow_tz = timezone(timedelta(hours=3))
+        now = datetime.now(moscow_tz).replace(tzinfo=None)
         # Создаем запись о расходе или доходе
         if operation_type == "expense":
             record = Expense(

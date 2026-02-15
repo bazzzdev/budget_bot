@@ -1,146 +1,45 @@
-# AGENTS.md - Development Guide for SmartSpends Bot
+# AGENTS.md
 
-## Project Overview
-Telegram bot for tracking personal and group expenses/incomes using aiogram 3.21 and SQLAlchemy 2.0.
+## Superpowers Enforcement
+- Superpowers skills are opt-in and used only on explicit user request.
+- Apply a skill only when the user directly asks for it (for example: "используй brainstorming").
+- Without an explicit request, do not enforce Superpowers skill workflows.
+- When a skill is explicitly requested, follow that skill's instructions exactly.
 
-## Build/Test/Lint Commands
-
-### Running Tests
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest bot/tests/test_finance.py
-
-# Run single test function
-pytest bot/tests/test_finance.py::test_handle_expense_income_valid_expense
-```
-
-### Database Operations
-```bash
-alembic upgrade head
-alembic revision --autogenerate -m "description"
-python main.py
-```
-
-## Code Style Guidelines
-
-### Imports
-- Group imports: standard library, third-party, then local modules
-- Use absolute imports from project root: `from bot.models.models import User`
-- Avoid wildcard imports
-
-### Types and Type Hints
-- Use Python 3.10+ union syntax with `|` operator
-- All async functions must include return type hints
-- Use SQLAlchemy 2.0 type hints: `Mapped[type]`
-
-### Naming Conventions
-- Functions: `snake_case`, Classes: `PascalCase`, Constants: `UPPER_SNAKE_CASE`
-- Database tables: `snake_case`, Private methods: `_leading_underscore`
-
-### Formatting
-- 4 spaces for indentation
-- Blank lines between top-level definitions (2 lines)
-- Blank lines between logical sections (1 line)
-
-### Error Handling
-- Use try/except with specific exception types
-- Return None or send user-friendly messages on errors
-- Use logger for logging errors from loguru
-- Always handle database commits with proper session management
-
-```python
-try:
-    amount = Decimal(amount_str.replace(",", "."))
-except (InvalidOperation, ValueError):
-    await message.reply("Invalid amount")
-    return
-```
-
-### Database Patterns
-- Always use async context managers for sessions: `async with get_async_session() as session:`
-- Use SQLAlchemy 2.0 select() for queries, not session.query()
-- Always commit after changes: `await session.commit()`
-- Use `.scalar_one_or_none()` or `.scalars().first()` for single results
-- Use `ilike` for case-insensitive string matching
-
-```python
-async with get_async_session() as session:
-    result = await session.execute(select(User).where(User.tg_id == tg_id))
-    user = result.scalar_one_or_none()
-```
-
-### Handlers and Routers
-- Use aiogram Router pattern: `router = Router()`
-- Decorate handlers with filters: `@router.message(F.text)` or `@router.message(Command("start"))`
-- Register all routers in `bot/handlers/__init__.py`
-- Use `InlineKeyboardMarkup` for inline keyboards
-- Parse mode is HTML by default (configured in settings.py)
-
-### Logging
-- Use loguru logger from `bot.utils.logger`
-- Log important events at INFO level
-- Log errors at appropriate levels
-- Example: `logger.info(f"/start from user {message.from_user.id}")`
-
-### Testing Patterns
-- Use pytest-asyncio with `@pytest.mark.asyncio` decorator
-- Mock bot interactions using `AsyncMock` and `AsyncMock`
-- Use `mocker.patch` to patch dependencies
-- Test files: `test_*.py` in `bot/tests/` directory
-- Mock database sessions and operations
-- Test return values and side effects separately
-
-```python
-@pytest.mark.asyncio
-async def test_handle_expense_income_valid_expense(mocker):
-    message = AsyncMock()
-    message.text = "1000 food"
-    message.reply = AsyncMock()
-    
-    mocker.patch("bot.handlers.finance.get_async_session", return_value=AsyncMock(...))
-    
-    await finance.handle_expense_income(message)
-    message.answer.assert_awaited()
-```
-
-### Configuration
-- Use pydantic BaseSettings for configuration
-- Load environment variables with python-dotenv
-- Store secrets in `.env` file (not committed)
-- Reference `.env.example` for required variables
-
-### Documentation
-- Use docstrings for functions with triple quotes
-- Docstrings are in Russian (matching codebase language)
-- Describe function purpose and parameters briefly
-- Keep docstrings concise and focused
-
-```python
-async def get_or_create_user(session, tg_user):
-    """
-    Gets or creates a user by Telegram ID.
-    """
-```
-
-### Files Structure
-- `main.py` - Entry point, register routers
-- `bot/config.py` - Pydantic settings
-- `bot/settings.py` - Bot and dispatcher setup
-- `bot/handlers/` - Telegram message handlers
-- `bot/models/` - SQLAlchemy ORM models
-- `bot/services/` - Business logic and database helpers
-- `bot/keyboards/` - Inline keyboard builders
-- `bot/utils/` - Utilities (logger, etc.)
-- `bot/tests/` - Test files
-
-### Important Notes
-- All database operations are async
-- Use `Decimal` for monetary amounts (not float)
-- Moscow timezone (UTC+3) is used for timestamps in handlers
-- Categories are context-specific (per chat)
-- Default categories are created for new chats
-- Admin checks use `chat.get_member()` with try/except
-- Use `get_user_display()` for consistent user display names
+## Skills
+A skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and file path so you can open the source for full instructions when using a specific skill.
+### Available skills
+- brainstorming: You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation. (file: /home/baz/.codex/superpowers/skills/brainstorming/SKILL.md)
+- dispatching-parallel-agents: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies (file: /home/baz/.codex/superpowers/skills/dispatching-parallel-agents/SKILL.md)
+- executing-plans: Use when you have a written implementation plan to execute in a separate session with review checkpoints (file: /home/baz/.codex/superpowers/skills/executing-plans/SKILL.md)
+- finishing-a-development-branch: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup (file: /home/baz/.codex/superpowers/skills/finishing-a-development-branch/SKILL.md)
+- receiving-code-review: Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation (file: /home/baz/.codex/superpowers/skills/receiving-code-review/SKILL.md)
+- requesting-code-review: Use when completing tasks, implementing major features, or before merging to verify work meets requirements (file: /home/baz/.codex/superpowers/skills/requesting-code-review/SKILL.md)
+- subagent-driven-development: Use when executing implementation plans with independent tasks in the current session (file: /home/baz/.codex/superpowers/skills/subagent-driven-development/SKILL.md)
+- systematic-debugging: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes (file: /home/baz/.codex/superpowers/skills/systematic-debugging/SKILL.md)
+- test-driven-development: Use when implementing any feature or bugfix, before writing implementation code (file: /home/baz/.codex/superpowers/skills/test-driven-development/SKILL.md)
+- using-git-worktrees: Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification (file: /home/baz/.codex/superpowers/skills/using-git-worktrees/SKILL.md)
+- using-superpowers: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions (file: /home/baz/.codex/superpowers/skills/using-superpowers/SKILL.md)
+- verification-before-completion: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always (file: /home/baz/.codex/superpowers/skills/verification-before-completion/SKILL.md)
+- writing-plans: Use when you have a spec or requirements for a multi-step task, before touching code (file: /home/baz/.codex/superpowers/skills/writing-plans/SKILL.md)
+- writing-skills: Use when creating new skills, editing existing skills, or verifying skills work before deployment (file: /home/baz/.codex/superpowers/skills/writing-skills/SKILL.md)
+- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. (file: /home/baz/.codex/skills/.system/skill-creator/SKILL.md)
+- skill-installer: Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). (file: /home/baz/.codex/skills/.system/skill-installer/SKILL.md)
+### How to use skills
+- Discovery: The list above is the skills available in this session (name + description + file path). Skill bodies live on disk at the listed paths.
+- Trigger rules: If the user names a skill (with `$SkillName` or plain text) OR the task clearly matches a skill's description shown above, you must use that skill for that turn. Multiple mentions mean use them all. Do not carry skills across turns unless re-mentioned.
+- Missing/blocked: If a named skill isn't in the list or the path can't be read, say so briefly and continue with the best fallback.
+- How to use a skill (progressive disclosure):
+  1) After deciding to use a skill, open its `SKILL.md`. Read only enough to follow the workflow.
+  2) When `SKILL.md` references relative paths (e.g., `scripts/foo.py`), resolve them relative to the skill directory listed above first, and only consider other paths if needed.
+  3) If `SKILL.md` points to extra folders such as `references/`, load only the specific files needed for the request; don't bulk-load everything.
+  4) If `scripts/` exist, prefer running or patching them instead of retyping large code blocks.
+  5) If `assets/` or templates exist, reuse them instead of recreating from scratch.
+- Coordination and sequencing:
+  - If multiple skills apply, choose the minimal set that covers the request and state the order you'll use them.
+  - Announce which skill(s) you're using and why (one short line). If you skip an obvious skill, say why.
+- Context hygiene:
+  - Keep context small: summarize long sections instead of pasting them; only load extra files when needed.
+  - Avoid deep reference-chasing: prefer opening only files directly linked from `SKILL.md` unless you're blocked.
+  - When variants exist (frameworks, providers, domains), pick only the relevant reference file(s) and note that choice.
+- Safety and fallback: If a skill can't be applied cleanly (missing files, unclear instructions), state the issue, pick the next-best approach, and continue.
